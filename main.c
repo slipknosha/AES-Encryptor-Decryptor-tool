@@ -8,22 +8,22 @@
 #include "aes.h"
 #include "crc32.h"
 
-int check_param(const char*);
+int check_param(const uint8_t*);
 int file_size(FILE *fp);
-int key_size(char*);
+int key_size(uint8_t*);
 //char* read_file(const char*, long int*);
-void show_file(char*, long int);
+void show_file(uint8_t*, long int);
 
 static void phex(uint8_t* str)
 {
     uint8_t len = 32;
-    unsigned char i;
+    uint8_t i;
     for (i = 0; i < len; ++i)
         printf("%.2x", str[i]);
     printf("\n");
 }
 
-int main(int argc, char* argv[])
+int main(int argc, uint8_t* argv[])
 {
    argc = 4;
   argv[1] = "--encrypt";
@@ -39,8 +39,8 @@ int main(int argc, char* argv[])
     return 0;
   }
   long int f_size;
-  const char* file_name = argv[2];
-  const char* key = argv[3];
+  const uint8_t* file_name = argv[2];
+  const uint8_t* key = argv[3];
   FILE* fp;
   fp = fopen(file_name, "rb");
   if (fp == NULL) {
@@ -79,7 +79,7 @@ long int file_size(FILE *fp)
   return size_of_file;
 }
 
-int check_param(const char* par)
+int check_param(const uint8_t* par)
 {
   if(!strcmp(par, "-h") || !strcmp(par, "--help")) {
     puts("help");
@@ -93,10 +93,10 @@ int check_param(const char* par)
   }
 }
 
-int key_size(char* key)
+int key_size(uint8_t* key)
 {
   int size=0;
-  char* k = key;
+  uint8_t* k = key;
   while(*k!='\0') {
       k++;
     size++;
@@ -104,7 +104,7 @@ int key_size(char* key)
   return size;
 }
 
-void read_file(char* buf,const char* f_name, long int* f_size)
+void read_file(uint8_t* buf,const uint8_t* f_name, long int* f_size)
 {
     FILE* fp;
     fp = fopen(f_name, "rb");
@@ -125,7 +125,7 @@ void read_file(char* buf,const char* f_name, long int* f_size)
 	fclose(fp);
 }
 
-void show_file(char* buf, long int f_size)
+void show_file(uint8_t* buf, long int f_size)
 {
   for(int i = 0; i < f_size; i++) {
     printf("%X", buf[i]);
