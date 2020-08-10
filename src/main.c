@@ -8,15 +8,15 @@
 #define DECRYPT 0
 #define HELP 2
 
-#include "aes.h"
-#include "crc32.h"
+#include "../inc/aes.h"
+#include "../inc/crc32.h"
 
 uint8_t par_mode(const uint8_t*);
 int file_size(FILE* fp);
 int key_size(uint8_t*);
-uint8_t* read_file(const uint8_t*, long int*);
-int write_file(const uint8_t*, long int, word32);
-void show_file(const uint8_t*, long int);
+uint8_t* read_file(const uint8_t*, int*);
+int write_file(const uint8_t*, int, word32);
+void show_file(const uint8_t*, int);
 
 static void phex(uint8_t* str)
 {
@@ -27,11 +27,11 @@ static void phex(uint8_t* str)
 	printf("\n");
 }
 
-int main(int argc, uint8_t* argv[])
+int main(int argc, char* argv[])
 {
 	argc = 4;
 	argv[1] = "--encrypt";
-	argv[2] = "C:\\Users\\vikaf\\source\\repos\\task\\Debug\\list.bin";
+	argv[2] = "list.bin";
 	argv[3] = "gldwp4235tykxmqajrtyopmcterk7319";
 	if (argc != 4) {
 		puts("Format is wrong!\n"
@@ -46,7 +46,7 @@ int main(int argc, uint8_t* argv[])
 	//uint8_t* mode = argv[1];
 	const uint8_t* file_name = argv[2];
 	const uint8_t* key = argv[3];
-	long int f_size;
+	int f_size;
 	struct AES_ctx ctx;
 	AES_init_ctx(&ctx, key);
 	uint8_t* buf = read_file(file_name, &f_size);
@@ -77,9 +77,9 @@ int main(int argc, uint8_t* argv[])
 	return 0;
 }
 
-long int file_size(FILE* fp)
+int file_size(FILE* fp)
 {
-	long int save_pos, size_of_file;
+	int save_pos, size_of_file;
 	save_pos = ftell(fp);
 	fseek(fp, 0L, SEEK_END);
 	size_of_file = ftell(fp);
@@ -113,7 +113,7 @@ int key_size(uint8_t* key)
 	return size;
 }
 
-uint8_t* read_file(const uint8_t* f_name, long int* f_size)
+uint8_t* read_file(const uint8_t* f_name, int* f_size)
 {
 	FILE* fp;
 	fp = fopen(f_name, "rb");
@@ -128,14 +128,14 @@ uint8_t* read_file(const uint8_t* f_name, long int* f_size)
 	return buf;
 }
 
-void show_file(const uint8_t* buf, long int f_size)
+void show_file(const uint8_t* buf, int f_size)
 {
 	for (int i = 0; i < f_size; i++) {
 		printf("0x%X ", buf[i]);
 	}
 }
 
-int write_file(const uint8_t* buf, long int size, word32 CRC32)
+int write_file(const uint8_t* buf, int size, word32 CRC32)
 {
 	//word32 counter = 8 + sizeof(word32) + sizeof(long int);
 	word32 counter = sizeof("BEBEBEBE") + sizeof(size) + sizeof(CRC32) + size;

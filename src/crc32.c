@@ -1,4 +1,6 @@
-#include "crc32.h"
+#include "../inc/crc32.h"
+
+word32 crc_table[256];
 //===== Main program ==========================================================
 /*void main(void)
 {
