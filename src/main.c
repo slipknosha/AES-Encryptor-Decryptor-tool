@@ -1,169 +1,161 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdint.h>
-
-#define ECB 1
-#define ENCRYPT 1
-#define DECRYPT 0
-#define HELP 2
-
-#include "../inc/aes.h"
-#include "../inc/crc32.h"
-
-uint8_t par_mode(const uint8_t*);
-int file_size(FILE* fp);
-int key_size(uint8_t*);
-uint8_t* read_file(const uint8_t*, int*);
-int write_file(const uint8_t*, int, word32);
-void show_file(const uint8_t*, int);
-
-static void phex(uint8_t* str)
-{
-	uint8_t len = 32;
-	uint8_t i;
-	for (i = 0; i < len; ++i)
-		printf("%.2x", str[i]);
-	printf("\n");
-}
+#include "../inc/main.h"
+extern word32 crc_table[];
 
 int main(int argc, char* argv[])
 {
-	argc = 4;
-	argv[1] = "--encrypt";
-	argv[2] = "list.bin";
-	argv[3] = "gldwp4235tykxmqajrtyopmcterk7319";
-	if (argc != 4) {
-		puts("Format is wrong!\n"
-			"Write ./task -h or task --help");
-		return 0;
-	}
-	if (key_size(argv[3]) != AES_KEYLEN) {
-		puts("Key must be contain 32 bytes!");
-		return 0;
-	}
-	const uint8_t* mode = argv[1];
-	//uint8_t* mode = argv[1];
-	const uint8_t* file_name = argv[2];
-	const uint8_t* key = argv[3];
-	int f_size;
-	struct AES_ctx ctx;
-	AES_init_ctx(&ctx, key);
-	uint8_t* buf = read_file(file_name, &f_size);
-	gen_crc_table();
-	word32 crc_before = update_crc(-1, buf, f_size);
-	printf("file before encrypt:\n");
-	show_file(buf, f_size);
-	printf("\nkey in ASCII: %s\n", key);
-	printf("key in HEX:");
-	show_file(key, 32);
-	printf("\nCRC32:0x%X\n", crc_before);
-	if (par_mode(mode) == ENCRYPT) {
-		for (int i = 0; i < f_size / 16; ++i) {
-			AES_ECB_encrypt(&ctx, buf + (i * 16));
-		}
-		show_file(buf, f_size);
-		write_file(buf, f_size, crc_before);
-	}
-	//puts("\n\n");
-	//mode = "--decrypt";
-	//if (par_mode(mode) == DECRYPT) {
-	//	for (int i = 0; i < f_size / 32 + 1; ++i) {
-	//		AES_ECB_decrypt(&ctx, buf + (i * 32));
-	//	}
-	//	show_file(buf, f_size);
-	//}
-	free(buf);
-	return 0;
+  argc = 4;
+  argv[1] = "-d";
+  argv[2] = "list.bin";
+  argv[3] = "qwert47vjdqwoncmerufk4d9cngkqwer";
+  const uint8_t* mode = argv[1];
+  if (argc != 4) {
+    if (argc == 1 && (par_mode(mode) == HELP)) {
+      puts("\n1. The first parameter is the mode: encryption or decryption and call the help:\n"
+        "- e or --encrypt\n"
+        "- d or --decrypt\n"
+        "- h or --help\n"
+        "2. The second parameter is the file name.The path cannot be absolute,\n"
+        "   so the binary file can be located only in the same directory with the program.\n"
+        "3. The last parameter is a 32 byte key, which must be entered as characters.\n");
+      return 0;
+    }
+    puts("Not enough arguments!\n"
+      "Write ./task -h or task --help");
+    return 0;
+  }
+
+  if (key_size(argv[3]) != AES_KEYLEN) {
+    puts("Key must contain 32 bytes!");
+    return 0;
+  }
+
+  uint8_t* file_name = argv[2];
+  const uint8_t* key = argv[3];
+  struct AES_ctx ctx;
+  int f_size;
+  word32 crc_before;
+  word32 crc_after;
+  uint8_t* buf;
+  uint8_t* magic_number;
+  AES_init_ctx(&ctx, key);
+  gen_crc_table();
+
+  printf("\nkey in ASCII: %s\n", key);
+  puts("\nkey in HEX:");
+  show_file(key, 32);
+
+  if (par_mode(mode) == ENCRYPT) {
+    buf = read_file(file_name, &f_size);
+    puts("\nFile before encrypt:");
+    show_file(buf, f_size);
+    crc_before = update_crc(-1, buf, f_size);
+    printf("\nCRC32: 0x%X\n", crc_before);
+    encrypt(buf, f_size, ctx);
+    puts("\nFile after encrypt:");
+    show_file(buf, f_size);
+    file_name = write_file(file_name, buf, f_size, crc_before, ENCRYPT);
+    read_header(file_name, 0, 0, ENCRYPT);
+    free(file_name);
+    return 0;
+  }
+
+  if (par_mode(mode) == DECRYPT) {
+    buf = read_file(file_name, &f_size);
+    puts("\nFile before decrypt:");
+    show_file(buf, f_size);
+    free(buf);
+    buf = read_header(file_name, &f_size, &crc_before, DECRYPT);
+    decrypt(buf, f_size, ctx);
+    puts("\nfile after decrypt:");
+    show_file(buf, f_size);
+    crc_after = update_crc(-1, buf, f_size);
+    printf("\nCRC32: 0x%X\n", crc_after);
+    if (crc_before == crc_after) {
+      puts("CRC in HEADER is equal recalculated CRC after decrypt.");
+    }
+    write_file(file_name, buf, f_size, 0, DECRYPT);
+    return 0;
+  }
+  return 0;
 }
 
-int file_size(FILE* fp)
-{
-	int save_pos, size_of_file;
-	save_pos = ftell(fp);
-	fseek(fp, 0L, SEEK_END);
-	size_of_file = ftell(fp);
-	fseek(fp, save_pos, SEEK_SET);
-	return size_of_file;
-}
 
 uint8_t par_mode(const uint8_t* par)
 {
-	if (!strcmp(par, "-h") || !strcmp(par, "--help")) {
-		puts("help");
-		return HELP;
-	}
-	if (!strcmp(par, "-e") || !strcmp(par, "--encrypt")) {
-		return ENCRYPT;
-	}
-	if (!strcmp(par, "-d") || !strcmp(par, "--decrypt")) {
-		return DECRYPT;
-	}
-	return -1;
+  if (!strcmp(par, "-h") || !strcmp(par, "--help")) {
+    return HELP;
+  }
+  if (!strcmp(par, "-e") || !strcmp(par, "--encrypt")) {
+    return ENCRYPT;
+  }
+  if (!strcmp(par, "-d") || !strcmp(par, "--decrypt")) {
+    return DECRYPT;
+  }
+  return -1;
 }
 
-int key_size(uint8_t* key)
+int key_size(const uint8_t* key)
 {
-	int size = 0;
-	uint8_t* k = key;
-	while (*k != '\0') {
-		k++;
-		size++;
-	}
-	return size;
+  int size = 0;
+  uint8_t* k = key;
+  while (*k != '\0') {
+    k++;
+    size++;
+  }
+  return size;
 }
 
-uint8_t* read_file(const uint8_t* f_name, int* f_size)
+
+
+void encrypt(uint8_t* buf, int f_size, struct AES_ctx ctx)
 {
-	FILE* fp;
-	fp = fopen(f_name, "rb");
-	if (fp == NULL) {
-		perror("Error occured while opening file");
-		exit(1);
-	}
-	*f_size = file_size(fp);
-	uint8_t* buf = malloc(*f_size + 1);
-	fread(buf, 1, *f_size, fp);
-	fclose(fp);
-	return buf;
+  for (int i = 0; i < f_size / 16; ++i) {
+    AES_ECB_encrypt(&ctx, buf + (i * 16));
+  }
 }
 
-void show_file(const uint8_t* buf, int f_size)
+void decrypt(uint8_t* buf, int f_size, struct AES_ctx ctx)
 {
-	for (int i = 0; i < f_size; i++) {
-		printf("0x%X ", buf[i]);
-	}
+  for (int i = 0; i < f_size / 16; ++i) {
+    AES_ECB_decrypt(&ctx, buf + (i * 16));
+  }
 }
 
-int write_file(const uint8_t* buf, int size, word32 CRC32)
+uint8_t* read_header(const uint8_t* name, int* size, word32* CRC32, uint8_t mod)
 {
-	//word32 counter = 8 + sizeof(word32) + sizeof(long int);
-	word32 counter = sizeof("BEBEBEBE") + sizeof(size) + sizeof(CRC32) + size;
-	FILE* fp;
-	if ((fp = fopen("enlist.bin", "wb")) == NULL)
-	{
-		perror("Error occured while opening file");
-		return 1;
-	}
-	fputs("BEBEBEBE", fp);
+  FILE* fp;
+  if ((fp = fopen(name, "rb")) == NULL)
+  {
+    perror("Error occured while opening file");
+    exit(1);
+  }
 
-	uint8_t* size_ptr = &size;
-	uint8_t* crc32_ptr = &CRC32;
+  uint8_t* buf = NULL;
+  uint8_t mag_num[9];
+  mag_num[8] = '\0';
+  unsigned int crc_temp;
+  int size_temp;
 
-	//fprintf(fp, "%x%x", CRC32, size);
-	for (int i = 0; i < sizeof(size); ++i) {
-		putc(*size_ptr, fp);
-		++size_ptr;
-	}
-	for (int i = 0; i < sizeof(word32); ++i) {
-		putc(*crc32_ptr, fp);
-		++crc32_ptr;
-	}
-	uint8_t* ptr = buf;
-	for (int i = 0; i < size; ++i) {
-		putc(*ptr, fp);
-		++ptr;
-	}
-	fclose(fp);
-	return counter;
+  fread(mag_num, 1, 8, fp);
+  fread(&size_temp, sizeof(size), 1, fp);
+  fread(&crc_temp, sizeof(CRC32), 1, fp);
+  if (!mod) {
+    buf = malloc(size_temp);
+    fread(buf, 1, size_temp, fp);
+  }
+  fclose(fp);
+  print_header(mag_num, size_temp, crc_temp);
+
+  if (!mod) {
+    *size = size_temp;
+    *CRC32 = crc_temp;
+    return buf;
+  }
+
+  return NULL;
+}
+
+void print_header(uint8_t* mag_num, int size, word32 CRC32)
+{
+  printf("\nHEADER\nMagic number: %s\nSize: 0x%X\nCRC: 0x%X", mag_num, size, CRC32);
 }
