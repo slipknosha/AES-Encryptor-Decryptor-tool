@@ -1,4 +1,5 @@
 #include "../inc/files.h"
+#include <stdlib.h>
 
 int file_size(FILE* fp)
 {
@@ -29,13 +30,13 @@ uint8_t* read_file(const uint8_t* f_name, int* f_size)
 
 void show_file(const uint8_t* buf, int f_size)
 {
-	for (int i = 0; i < f_size; ++i) {
-		putc('\t', stdout);
-		for (int j = 0; j < 8; ++j, ++i) {
-			printf("0x%-2X ", buf[i]);
-		}
-		putc('\n', stdout);
-	}
+  for (int i = 0; i < f_size;) {
+    putc('\t', stdout);
+    for (int j = 0; j < 8; j++) {
+      printf("0x%-2X ", buf[i++]);
+    }
+    putc('\n', stdout);
+  }
 }
 
 uint8_t* write_file(uint8_t* name, const uint8_t* buf, int size, word32 CRC32, uint8_t mod)
@@ -60,6 +61,7 @@ uint8_t* write_file(uint8_t* name, const uint8_t* buf, int size, word32 CRC32, u
 		}
 	}
 	else {
+		strcpy(f_name, name);
 		f_name[0] = 'd';
 		f_name[1] = 'e';
 		f_name[ar_bytes] = '\0';
@@ -72,18 +74,11 @@ uint8_t* write_file(uint8_t* name, const uint8_t* buf, int size, word32 CRC32, u
 	}
 
 	if (mod) {
-		fputs("BEBEBEBE", fp);
-		uint8_t* size_ptr = &size;
-		uint8_t* crc32_ptr = &CRC32;
-
-		for (int i = 0; i < sizeof(size); ++i) {
-			putc(*size_ptr, fp);
-			++size_ptr;
-		}
-		for (int i = 0; i < sizeof(word32); ++i) {
-			putc(*crc32_ptr, fp);
-			++crc32_ptr;
-		}
+		void* size_ptr = &size;
+		void* crc32_ptr = &CRC32;
+		fwrite(crc32_ptr, sizeof(CRC32), 1, fp);
+		fwrite(size_ptr, sizeof(size), 1, fp);
+		fprintf(fp,"BEBEBEBE");
 	}
 
 	uint8_t* ptr = buf;

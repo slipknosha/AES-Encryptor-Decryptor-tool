@@ -1,4 +1,4 @@
-CC=gcc
+SCC=gcc
 
 CFLAGS=-c -Wall
 

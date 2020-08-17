@@ -1,19 +1,19 @@
 #include "../inc/main.h"
-extern word32 crc_table[];
+//extern word32 crc_table[];
 
 int main(int argc, char* argv[])
 {
-  argc = 4;
-  argv[1] = "-d";
-  argv[2] = "list.bin";
-  argv[3] = "qwert47vjdqwoncmerufk4d9cngkqwer";
+  //argc = 4;
+  //argv[1] = "-d";
+  //argv[2] = "enlist.bin";
+  //argv[3] = "qwert47vjdqwoncmerufk4d9cngkqwer";
   const uint8_t* mode = argv[1];
   if (argc != 4) {
-    if (argc == 1 && (par_mode(mode) == HELP)) {
+    if (argc == 2 && (par_mode(mode) == HELP)) {
       puts("\n1. The first parameter is the mode: encryption or decryption and call the help:\n"
-        "- e or --encrypt\n"
-        "- d or --decrypt\n"
-        "- h or --help\n"
+        "-e or --encrypt\n"
+        "-d or --decrypt\n"
+        "-h or --help\n"
         "2. The second parameter is the file name.The path cannot be absolute,\n"
         "   so the binary file can be located only in the same directory with the program.\n"
         "3. The last parameter is a 32 byte key, which must be entered as characters.\n");
@@ -33,10 +33,9 @@ int main(int argc, char* argv[])
   const uint8_t* key = argv[3];
   struct AES_ctx ctx;
   int f_size;
-  word32 crc_before;
-  word32 crc_after;
+  word32 crc_before=0;
+  word32 crc_after=0;
   uint8_t* buf;
-  uint8_t* magic_number;
   AES_init_ctx(&ctx, key);
   gen_crc_table();
 
@@ -79,7 +78,6 @@ int main(int argc, char* argv[])
   return 0;
 }
 
-
 uint8_t par_mode(const uint8_t* par)
 {
   if (!strcmp(par, "-h") || !strcmp(par, "--help")) {
@@ -105,8 +103,6 @@ int key_size(const uint8_t* key)
   return size;
 }
 
-
-
 void encrypt(uint8_t* buf, int f_size, struct AES_ctx ctx)
 {
   for (int i = 0; i < f_size / 16; ++i) {
@@ -131,19 +127,22 @@ uint8_t* read_header(const uint8_t* name, int* size, word32* CRC32, uint8_t mod)
   }
 
   uint8_t* buf = NULL;
-  uint8_t mag_num[9];
+  char mag_num[9];
   mag_num[8] = '\0';
-  unsigned int crc_temp;
+
+  word32 crc_temp;
   int size_temp;
 
-  fread(mag_num, 1, 8, fp);
-  fread(&size_temp, sizeof(size), 1, fp);
-  fread(&crc_temp, sizeof(CRC32), 1, fp);
+  fread(&crc_temp, sizeof(*CRC32), 1 , fp);
+  fread(&size_temp, sizeof(*size), 1 , fp);
+  fread(mag_num, sizeof(char), 8, fp);
+
   if (!mod) {
     buf = malloc(size_temp);
     fread(buf, 1, size_temp, fp);
   }
   fclose(fp);
+  
   print_header(mag_num, size_temp, crc_temp);
 
   if (!mod) {
@@ -157,5 +156,5 @@ uint8_t* read_header(const uint8_t* name, int* size, word32* CRC32, uint8_t mod)
 
 void print_header(uint8_t* mag_num, int size, word32 CRC32)
 {
-  printf("\nHEADER\nMagic number: %s\nSize: 0x%X\nCRC: 0x%X", mag_num, size, CRC32);
+  printf("\nHEADER\nMagic number: %s\nSize: 0x%X\nCRC: 0x%X\n", mag_num, size, CRC32);
 }
