@@ -3,10 +3,6 @@
 
 int main(int argc, char* argv[])
 {
-  //argc = 4;
-  //argv[1] = "-d";
-  //argv[2] = "enlist.bin";
-  //argv[3] = "qwert47vjdqwoncmerufk4d9cngkqwer";
   const uint8_t* mode = argv[1];
   if (argc != 4) {
     if (argc == 2 && (par_mode(mode) == HELP)) {
