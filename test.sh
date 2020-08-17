@@ -1,3 +1,5 @@
+#!/bin/bash
+
  make
 ./randombin list.bin 64
 ./task -h
