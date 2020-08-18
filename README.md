@@ -1,3 +1,6 @@
+# $sudo chmod +x ./test.sh
+# $sudo ./test.sh
+
 # AES Encryptor/Decryptor tool
 
 The goal of the task is to create a PC tool (with command line interface) to encrypt and decrypt binary file using AES-256 encryption algorithm with the following functionality and features:
