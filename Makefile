@@ -1,6 +1,6 @@
-SCC=gcc
+CC=gcc
 
-CFLAGS=-c -Wall
+CFLAGS=-c -g -Wall -std=c99
 
 all: task randombin
 
